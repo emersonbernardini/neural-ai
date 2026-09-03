@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Local knowledge database (per-project, not committed)
+.neural-map/*.db
+.neural-map/*.db-wal
+.neural-map/*.db-shm
+
+# Agent instructions (generated per-project, customize locally)
+AGENTS.md
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*

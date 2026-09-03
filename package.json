@@ -1,0 +1,19 @@
+{
+  "name": "neural-ai",
+  "version": "0.1.0",
+  "description": "Local-first project knowledge & memory system for coding agents (.neural-map + .neural-memory)",
+  "type": "module",
+  "bin": {
+    "neural": "./dist/neural"
+  },
+  "scripts": {
+    "cli": "bun run src/cli/index.ts",
+    "build": "bun build src/cli/index.ts --compile --outfile dist/neural",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.6.0"
+  }
+}
