@@ -4,18 +4,33 @@
 // gets exercised, since automatic ingestion is intentionally out of scope.
 
 import { join } from "node:path";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { openDatabase, openGlobalDatabase } from "../db/database";
 import { runInit } from "./commands/init";
 import { runMapCommand } from "./commands/map";
 import { runMemoryCommand } from "./commands/memory";
 import { runSearchCommand } from "./commands/search";
 import { runStatsCommand } from "./commands/stats";
+import { MGPP_SKILL } from "./skills/mgpp";
 
 const PROJECT_ROOT = process.cwd();
 const NEURAL_DIR = join(PROJECT_ROOT, ".neural-map");
 const DB_PATH = join(NEURAL_DIR, "neural.db");
 
+const GLOBAL_SKILLS_DIR = join(homedir(), ".neural-memory", "skills", "mgpp");
+const GLOBAL_SKILL_PATH = join(GLOBAL_SKILLS_DIR, "SKILL.md");
+
+function ensureMgppSkill(): void {
+  if (!existsSync(GLOBAL_SKILL_PATH)) {
+    mkdirSync(GLOBAL_SKILLS_DIR, { recursive: true });
+    writeFileSync(GLOBAL_SKILL_PATH, MGPP_SKILL, "utf-8");
+    console.log("[neural] MGPP skill installed to ~/.neural-memory/skills/mgpp/SKILL.md");
+  }
+}
+
 function main() {
+  ensureMgppSkill();
   const [, , command, ...rest] = process.argv;
 
   if (!command) {

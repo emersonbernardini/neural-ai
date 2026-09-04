@@ -9,6 +9,9 @@ dist/
 .neural-map/*.db-wal
 .neural-map/*.db-shm
 
+# Agent instructions (generated per-project, customize locally)
+AGENTS.md
+
 # IDE
 .vscode/
 .idea/
