@@ -6,11 +6,13 @@
 // UPDATE: every test tagged "FINDING" started out red (see the original
 // chat transcript / bun test output) — each one documented a real gap:
 // silent enum bypass on `type`/`status`, no range check on `importance`
-// in `update()`, dangling `memory_relationships` after `remove-entity`,
-// and no self-relationship guard. All five have since been fixed in
-// memoryService.ts and mapService.ts. These tests are kept exactly as
-// they were (still asserting the CORRECT behavior) so they now serve as
-// permanent regression guards instead of bug reports.
+// in `update()`, dangling `memory_relationships` after `remove-entity`
+// (map->memory), dangling `memory_relationships` after `memory delete`
+// (memory->memory, found later during a real migration), and no
+// self-relationship guard. All six have since been fixed in
+// memoryRepository.ts, memoryService.ts and mapService.ts. These tests
+// are kept exactly as they were (still asserting the CORRECT behavior)
+// so they now serve as permanent regression guards instead of bug reports.
 
 import { describe, expect, test } from "bun:test";
 import { MapService } from "../src/map/mapService";
@@ -106,6 +108,44 @@ describe("adversarial — cross-module cleanup (previously a gap, now fixed)", (
     const rels = memoryService.relationships(bug.id);
     const danglingRef = rels.find((r) => r.targetType === "map_entity" && r.targetId === "cart-module");
     expect(danglingRef).toBeUndefined();
+    db.close();
+  });
+
+  test("removing a memory also removes OTHER memories' relationships that pointed at it", () => {
+    // Found live during a real memory migration (recreate + delete to
+    // change an immutable `type`): a relationship from memory A to memory
+    // B survived deleting B, because target_id has no FK — only the
+    // memory_id side of memory_relationships cascades automatically.
+    const { db } = makeTempDb();
+    const memoryService = new MemoryService(db);
+
+    const bug = memoryService.add({ type: "bug", content: "Checkout drops items under load." });
+    const fix = memoryService.add({ type: "solution", content: "Wrapped checkout in a single DB transaction." });
+    memoryService.linkToMemory(fix.id, "resolves", bug.id);
+
+    memoryService.remove(bug.id);
+
+    const fixRels = memoryService.relationships(fix.id);
+    const danglingRef = fixRels.find((r) => r.targetType === "memory" && r.targetId === bug.id);
+    expect(danglingRef).toBeUndefined();
+    db.close();
+  });
+
+  test("removing a memory still removes ITS OWN outgoing relationships (the FK-backed side keeps working)", () => {
+    const { db } = makeTempDb();
+    const memoryService = new MemoryService(db);
+
+    const bug = memoryService.add({ type: "bug", content: "Checkout drops items under load." });
+    const fix = memoryService.add({ type: "solution", content: "Wrapped checkout in a single DB transaction." });
+    memoryService.linkToMemory(fix.id, "resolves", bug.id);
+
+    memoryService.remove(fix.id);
+
+    // fix.id no longer exists, so its own relationships row (memory_id =
+    // fix.id) should be gone via the existing ON DELETE CASCADE — this
+    // isn't a new fix, just confirming we didn't break it while touching
+    // remove() above.
+    expect(memoryService.relationships(fix.id).length).toBe(0);
     db.close();
   });
 });

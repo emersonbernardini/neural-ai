@@ -85,6 +85,16 @@ export class MemoryRepository {
   }
 
   remove(id: string): boolean {
+    // `memory_id REFERENCES memories(id) ON DELETE CASCADE` already cleans up
+    // relationships FROM this memory. But a relationship FROM another memory
+    // TO this one (target_type = 'memory', target_id = this id) has no FK at
+    // all — target_id is a plain TEXT column, since it can point at either a
+    // memory or a map entity. That side needs cleaning up explicitly, or
+    // `neural memory show <other-id>` keeps listing a relation pointing at a
+    // memory that no longer exists.
+    this.db
+      .query("DELETE FROM memory_relationships WHERE target_type = 'memory' AND target_id = ?")
+      .run(id);
     const result = this.db.query("DELETE FROM memories WHERE id = ?").run(id);
     return result.changes > 0;
   }
