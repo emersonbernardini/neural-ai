@@ -64,3 +64,74 @@ export function searchMemories(db: Database, query: string, opts: SearchOptions 
     };
   });
 }
+
+/**
+ * Searches the neural MAP (entities, relationships, constraints and the
+ * architecture/meta notes) via plain case-insensitive LIKE matching.
+ * The map has no FTS index — its rows are few and short compared to
+ * memories, so LIKE is sufficient and keeps this independent of the
+ * memories_fts virtual table. Only the local db has map tables (the
+ * global db is memory-only), so this is never called against globalDb.
+ */
+export function searchMapData(db: Database, query: string): SearchHit[] {
+  const trimmed = query.trim();
+  if (!trimmed) return [];
+  const term = `%${trimmed}%`;
+  const hits: SearchHit[] = [];
+
+  const entities = db
+    .query(
+      `SELECT * FROM map_entities
+       WHERE id LIKE ? COLLATE NOCASE OR name LIKE ? COLLATE NOCASE OR path LIKE ? COLLATE NOCASE`
+    )
+    .all(term, term, term) as any[];
+  for (const e of entities) {
+    hits.push({
+      kind: "map_entity",
+      id: e.id,
+      score: 1,
+      snippet: `entity [${e.type}] ${e.name}${e.path ? ` (${e.path})` : ""}`,
+    });
+  }
+
+  const rels = db
+    .query(
+      `SELECT * FROM map_relationships
+       WHERE from_entity LIKE ? COLLATE NOCASE OR to_entity LIKE ? COLLATE NOCASE OR type LIKE ? COLLATE NOCASE`
+    )
+    .all(term, term, term) as any[];
+  for (const r of rels) {
+    hits.push({
+      kind: "map_entity",
+      id: `rel_${r.id}`,
+      score: 1,
+      snippet: `relationship: ${r.from_entity} -${r.type}-> ${r.to_entity}`,
+    });
+  }
+
+  const constraints = db
+    .query(`SELECT * FROM map_constraints WHERE description LIKE ? COLLATE NOCASE`)
+    .all(term) as any[];
+  for (const c of constraints) {
+    hits.push({
+      kind: "map_entity",
+      id: `constraint_${c.id}`,
+      score: 1,
+      snippet: `constraint: ${c.description}`,
+    });
+  }
+
+  const meta = db
+    .query(`SELECT * FROM map_meta WHERE key LIKE ? COLLATE NOCASE OR value LIKE ? COLLATE NOCASE`)
+    .all(term, term) as any[];
+  for (const m of meta) {
+    hits.push({
+      kind: "map_entity",
+      id: `meta_${m.key}`,
+      score: 1,
+      snippet: `${m.key}: ${m.value}`,
+    });
+  }
+
+  return hits;
+}
