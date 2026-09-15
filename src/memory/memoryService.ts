@@ -4,7 +4,18 @@
 
 import type { Database } from "bun:sqlite";
 import type { Memory, MemoryRelationTargetType, MemoryStatus, MemoryType } from "../core/types";
+import { MEMORY_STATUSES, MEMORY_TYPES } from "../core/types";
 import { MemoryRepository } from "./memoryRepository";
+import { normalizeMemoryId } from "../util/ids";
+
+function assertValidImportance(importance: number): void {
+  if (typeof importance !== "number" || !Number.isFinite(importance) || !Number.isInteger(importance)) {
+    throw new Error(`importance must be an integer between 1 and 5 (got ${JSON.stringify(importance)})`);
+  }
+  if (importance < 1 || importance > 5) {
+    throw new Error(`importance must be between 1 and 5 (got ${importance})`);
+  }
+}
 
 /**
  * Deterministic rules for what should NOT become permanent memory.
@@ -50,18 +61,21 @@ export class MemoryService {
     importance?: number;
     source?: string | null;
   }): Memory {
+    if (!MEMORY_TYPES.includes(input.type)) {
+      throw new Error(`invalid memory type "${input.type}" — valid types: ${MEMORY_TYPES.join(", ")}`);
+    }
     const check = checkPersistable(input.content);
     if (!check.allowed) {
       throw new Error(`Refusing to persist ephemeral content: ${check.reason}`);
     }
-    if (input.importance !== undefined && (input.importance < 1 || input.importance > 5)) {
-      throw new Error("importance must be between 1 and 5");
+    if (input.importance !== undefined) {
+      assertValidImportance(input.importance);
     }
     return this.repo.create(input);
   }
 
   get(id: string): Memory | null {
-    return this.repo.get(id);
+    return this.repo.get(normalizeMemoryId(id));
   }
 
   list(filter?: { type?: MemoryType; status?: MemoryStatus }): Memory[] {
@@ -69,22 +83,28 @@ export class MemoryService {
   }
 
   update(id: string, changes: Partial<Pick<Memory, "content" | "importance" | "status" | "source">>): Memory {
-    return this.repo.update(id, changes);
+    if (changes.status !== undefined && !MEMORY_STATUSES.includes(changes.status)) {
+      throw new Error(`invalid status "${changes.status}" — valid statuses: ${MEMORY_STATUSES.join(", ")}`);
+    }
+    if (changes.importance !== undefined) {
+      assertValidImportance(changes.importance);
+    }
+    return this.repo.update(normalizeMemoryId(id), changes);
   }
 
   remove(id: string): boolean {
-    return this.repo.remove(id);
+    return this.repo.remove(normalizeMemoryId(id));
   }
 
   linkToMemory(memoryId: string, relation: string, targetMemoryId: string) {
-    return this.repo.addRelationship(memoryId, relation, "memory", targetMemoryId);
+    return this.repo.addRelationship(normalizeMemoryId(memoryId), relation, "memory", normalizeMemoryId(targetMemoryId));
   }
 
   linkToMapEntity(memoryId: string, relation: string, mapEntityId: string) {
-    return this.repo.addRelationship(memoryId, relation, "map_entity", mapEntityId);
+    return this.repo.addRelationship(normalizeMemoryId(memoryId), relation, "map_entity", mapEntityId);
   }
 
   relationships(memoryId: string) {
-    return this.repo.listRelationships(memoryId);
+    return this.repo.listRelationships(normalizeMemoryId(memoryId));
   }
 }

@@ -2,8 +2,21 @@
 // by the caller (e.g. "auth-module") — they are NOT generated here, since
 // their whole purpose is to be a human-chosen identity independent of paths.
 
+const MEMORY_ID_PREFIX = "mem_";
+
 export function newMemoryId(): string {
-  return `mem_${crypto.randomUUID()}`;
+  return `${MEMORY_ID_PREFIX}${crypto.randomUUID()}`;
+}
+
+/**
+ * Accepts a memory id with or without the "mem_" prefix and returns the
+ * canonical, storage-format id. `neural memory list` always prints the
+ * prefixed form, but users routinely copy just the UUID part — every
+ * lookup (show/update/delete/relationships) should tolerate both.
+ */
+export function normalizeMemoryId(id: string): string {
+  const trimmed = id.trim();
+  return trimmed.startsWith(MEMORY_ID_PREFIX) ? trimmed : `${MEMORY_ID_PREFIX}${trimmed}`;
 }
 
 export function nowIso(): string {
