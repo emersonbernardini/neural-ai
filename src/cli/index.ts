@@ -99,10 +99,13 @@ function printHelp() {
       "",
       "usage:",
       "  neural init",
-      "  neural map [add-module|add-entity|add-relationship|set-architecture|set-constraint|remove-entity|show] ...",
-      '  neural memory [--global] [add|list|show|update|delete] ...',
-      '  neural search "<query>"',
+      "  neural map [add-module|add-entity|add-relationship|remove-entity|",
+      "              set-architecture|clear-architecture|set-constraint|remove-constraint|show|help] ...",
+      '  neural memory [--global] [add|list|show|update|delete|help] ...',
+      '  neural search ["<query>"]      (empty query lists all memories)',
       "  neural stats",
+      "",
+      "run `neural map help` or `neural memory help` for subcommand details.",
     ].join("\n")
   );
 }

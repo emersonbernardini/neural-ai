@@ -4,6 +4,7 @@
 
 import type { Database } from "bun:sqlite";
 import type { MapEntity, MapEntityType, MapRelationType } from "../core/types";
+import { MAP_ENTITY_TYPES, MAP_RELATION_TYPES } from "../core/types";
 import { assertValidEntityId } from "../util/ids";
 import { MapRepository } from "./mapRepository";
 
@@ -31,6 +32,9 @@ export class MapService {
     opts?: { name?: string; path?: string; attributes?: Record<string, unknown> }
   ): MapEntity {
     assertValidEntityId(id);
+    if (!MAP_ENTITY_TYPES.includes(type)) {
+      throw new Error(`invalid entity type "${type}" — valid types: ${MAP_ENTITY_TYPES.join(", ")}`);
+    }
     return this.repo.upsertEntity({
       id,
       type,
@@ -71,6 +75,12 @@ export class MapService {
   }
 
   addRelationship(fromEntity: string, toEntity: string, type: MapRelationType) {
+    if (!MAP_RELATION_TYPES.includes(type)) {
+      throw new Error(`invalid relationship type "${type}" — valid types: ${MAP_RELATION_TYPES.join(", ")}`);
+    }
+    if (fromEntity === toEntity) {
+      throw new Error(`an entity cannot have a "${type}" relationship with itself ("${fromEntity}")`);
+    }
     if (!this.repo.getEntity(fromEntity)) throw new Error(`Unknown entity "${fromEntity}"`);
     if (!this.repo.getEntity(toEntity)) throw new Error(`Unknown entity "${toEntity}"`);
     return this.repo.addRelationship(fromEntity, toEntity, type);
@@ -88,6 +98,10 @@ export class MapService {
     return this.repo.getMeta("architecture");
   }
 
+  clearArchitecture(): boolean {
+    return this.repo.deleteMeta("architecture");
+  }
+
   setProjectSummary(summary: string): void {
     this.repo.setMeta("summary", summary);
   }
@@ -102,5 +116,9 @@ export class MapService {
 
   listConstraints() {
     return this.repo.listConstraints();
+  }
+
+  removeConstraint(id: number): boolean {
+    return this.repo.removeConstraint(id);
   }
 }

@@ -3,6 +3,29 @@ import { MemoryService } from "../../memory/memoryService";
 import { GlobalMemoryService } from "../../memory/globalMemoryService";
 import type { MemoryType } from "../../core/types";
 
+const UPDATABLE_FIELDS = ["content", "importance", "status"] as const;
+
+const MEMORY_HELP = [
+  'neural memory [--global] <subcommand> ...',
+  "",
+  "flag:",
+  "  --global                                     operate on the global (cross-project) ledger instead of the local one",
+  "",
+  "subcommands:",
+  '  add <type> "<content>"                       create a memory',
+  "                                                type: discovery | decision | solution | bug | constraint |",
+  "                                                      architecture | change | lesson | unresolved",
+  "  list [type]                                  list memories, optionally filtered by type",
+  "  show <id>                                    show a memory and its relationships",
+  "  update <id> <field> <value>                  update one field of a memory",
+  `                                                field: ${UPDATABLE_FIELDS.join(" | ")}`,
+  "  delete <id>                                  delete a memory",
+  "  help, --help, -h                             show this message",
+  "",
+  "ids accept either form: the full \"mem_<uuid>\" shown by `list`, or just the",
+  "bare uuid — both resolve to the same memory.",
+].join("\n");
+
 function parseGlobalFlag(args: string[]): { global: boolean; remaining: string[] } {
   const globalIdx = args.indexOf("--global");
   if (globalIdx >= 0) {
@@ -14,9 +37,14 @@ function parseGlobalFlag(args: string[]): { global: boolean; remaining: string[]
 
 export function runMemoryCommand(localDb: Database, globalDb: Database, args: string[]): string {
   const { global, remaining } = parseGlobalFlag(args);
+  const [sub, ...rest] = remaining;
+
+  if (sub === "help" || sub === "--help" || sub === "-h") {
+    return MEMORY_HELP;
+  }
+
   const service = global ? new GlobalMemoryService(globalDb) : new MemoryService(localDb);
   const scope = global ? "global" : "local";
-  const [sub, ...rest] = remaining;
 
   switch (sub) {
     case "add": {
@@ -62,7 +90,7 @@ export function runMemoryCommand(localDb: Database, globalDb: Database, args: st
       } else if (field === "content") {
         service.update(id, { content: value });
       } else {
-        throw new Error(`unknown field "${field}"`);
+        throw new Error(`unknown field "${field}" — valid fields: ${UPDATABLE_FIELDS.join(", ")} (type is fixed at creation and can't be changed)`);
       }
       return `memory "${id}" updated (${scope})`;
     }
@@ -73,6 +101,6 @@ export function runMemoryCommand(localDb: Database, globalDb: Database, args: st
       return removed ? `memory "${id}" deleted (${scope})` : `memory "${id}" not found in ${scope}`;
     }
     default:
-      throw new Error(`unknown memory subcommand "${sub}"`);
+      throw new Error(`unknown memory subcommand "${sub}" — run "neural memory help" to see available subcommands`);
   }
 }

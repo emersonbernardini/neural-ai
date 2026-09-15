@@ -92,6 +92,21 @@ export class MapRepository {
   }
 
   removeEntity(id: string): boolean {
+    // map_relationships has ON DELETE CASCADE in the schema, but that only
+    // fires when SQLite's foreign key enforcement is active for this
+    // connection — deleting relationships explicitly here makes the cleanup
+    // correct regardless of pragma state, and keeps the intent visible.
+    this.db
+      .query("DELETE FROM map_relationships WHERE from_entity = ? OR to_entity = ?")
+      .run(id, id);
+    // memory_relationships can point AT a map entity (target_type =
+    // 'map_entity') with no foreign key at all — that table lives in the
+    // memory subsystem, so nothing there knows this entity just disappeared.
+    // Clean those up too, or `neural memory show` keeps "affects ->
+    // map_entity:<id>" pointing at nothing forever.
+    this.db
+      .query("DELETE FROM memory_relationships WHERE target_type = 'map_entity' AND target_id = ?")
+      .run(id);
     const result = this.db.query("DELETE FROM map_entities WHERE id = ?").run(id);
     return result.changes > 0;
   }
@@ -145,6 +160,11 @@ export class MapRepository {
     return row?.value ?? null;
   }
 
+  deleteMeta(key: string): boolean {
+    const result = this.db.query("DELETE FROM map_meta WHERE key = ?").run(key);
+    return result.changes > 0;
+  }
+
   listMeta(): Record<string, string> {
     const rows = this.db.query("SELECT key, value FROM map_meta").all() as {
       key: string;
@@ -170,5 +190,10 @@ export class MapRepository {
       .query("SELECT * FROM map_constraints ORDER BY id")
       .all() as any[];
     return rows.map((r) => ({ id: r.id, description: r.description, createdAt: r.created_at }));
+  }
+
+  removeConstraint(id: number): boolean {
+    const result = this.db.query("DELETE FROM map_constraints WHERE id = ?").run(id);
+    return result.changes > 0;
   }
 }
