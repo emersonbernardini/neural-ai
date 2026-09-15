@@ -5,7 +5,8 @@
 // Neural Map — current state of the project
 // ---------------------------------------------------------------------------
 
-export type MapEntityType = "module" | "component" | "domain-entity" | "subsystem";
+export const MAP_ENTITY_TYPES = ["module", "component", "domain-entity", "subsystem"] as const;
+export type MapEntityType = (typeof MAP_ENTITY_TYPES)[number];
 
 export interface MapEntity {
   id: string; // stable logical id, e.g. "auth-module" (NOT a file path)
@@ -18,7 +19,8 @@ export interface MapEntity {
   updatedAt: string;
 }
 
-export type MapRelationType = "depends-on" | "part-of" | "implements" | "related-to";
+export const MAP_RELATION_TYPES = ["depends-on", "part-of", "implements", "related-to"] as const;
+export type MapRelationType = (typeof MAP_RELATION_TYPES)[number];
 
 export interface MapRelationship {
   id: number;
@@ -45,18 +47,21 @@ export interface MapMetaEntry {
 // Neural Memory — historical knowledge
 // ---------------------------------------------------------------------------
 
-export type MemoryType =
-  | "discovery"
-  | "decision"
-  | "solution"
-  | "bug"
-  | "constraint"
-  | "architecture"
-  | "change"
-  | "lesson"
-  | "unresolved";
+export const MEMORY_TYPES = [
+  "discovery",
+  "decision",
+  "solution",
+  "bug",
+  "constraint",
+  "architecture",
+  "change",
+  "lesson",
+  "unresolved",
+] as const;
+export type MemoryType = (typeof MEMORY_TYPES)[number];
 
-export type MemoryStatus = "active" | "superseded" | "resolved";
+export const MEMORY_STATUSES = ["active", "superseded", "resolved"] as const;
+export type MemoryStatus = (typeof MEMORY_STATUSES)[number];
 
 export interface Memory {
   id: string;
